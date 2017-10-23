@@ -27,8 +27,22 @@ void printTable() {
     }
 }
 
-void rehash() {
-    
+void chaining(uint64_t hashIndex, pageEntry *entry) {
+   /* Add to the beginning of the list*/
+   pageEntry *current = hashTable->entries[hashIndex];
+   entry->next = current;
+   hashTable->entries[hashIndex] = entry;  
+}
+
+void addEntry(uint64_t hashIndex, pageEntry *entry) {
+    /* If there is an entry at the hash index, use separate chaining */
+    if (hashTable->entries[hashIndex]) {
+        chaining(hashIndex, entry);
+    }
+    // insert
+    else {
+        (hashTable->entries)[hashIndex] = entry;
+    }
 }
 
 int main() {
@@ -37,17 +51,18 @@ int main() {
     uint64_t pageAddress = 0x1003abcd;
     uint64_t hashIndex = hash(pageAddress);
     
-    // rehash
-    if (hashTable->entries[hashIndex]) {
-        rehash();
-    }
-    // insert
-    else {
-        pageEntry *entry = malloc(sizeof(pageEntry));
-        entry->pageAddress = pageAddress;
-        entry->next = NULL;
-        (hashTable->entries)[hashIndex] = entry;
-    }
+    pageEntry *entry = malloc(sizeof(pageEntry));
+    entry->pageAddress = pageAddress;
+    entry->next = NULL;
+    
+    pageEntry *copy = malloc(sizeof(pageEntry));
+    copy->pageAddress = pageAddress;
+    copy->next = NULL;
+
+    printf("HashIndex: %llu\n", hashIndex);
+    addEntry(hashIndex, entry);
+    addEntry(hashIndex, copy);
+
     
     printTable();
     
