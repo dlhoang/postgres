@@ -45,6 +45,30 @@ void addEntry(uint64_t hashIndex, pageEntry *entry) {
     }
 }
 
+uint64_t evictEntry() {
+   pageEntry* cur;
+   pageEntry* prev = NULL;
+   uint64_t returnAddress;
+
+   srand(time(NULL));
+   int randomIndex = rand() % hashTable->capacity;
+   while ((hashTable->entries)[randomIndex] == NULL) {
+      randomIndex = rand() % hashTable->capacity;
+   }
+   printf("This is r: %d\n", randomIndex);
+
+   cur = hashTable->entries[randomIndex];
+   while (cur->next != NULL) {
+      prev = cur;
+      cur = cur->next;
+   }
+   returnAddress = cur->pageAddress;
+   prev->next = NULL;
+   free(cur);
+   
+   return returnAddress;
+}
+
 int main() {
     createHashTable();
     
@@ -64,6 +88,10 @@ int main() {
     addEntry(hashIndex, copy);
 
     
+    printTable();
+
+    printf("This is the returnAddress: %llu\n", evictEntry());
+
     printTable();
     
     return 0;
