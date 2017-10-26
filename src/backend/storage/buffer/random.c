@@ -63,7 +63,12 @@ uint64_t evictEntry() {
       cur = cur->next;
    }
    returnAddress = cur->pageAddress;
-   prev->next = NULL;
+   if (prev != NULL) {
+      prev->next = NULL;
+   }
+   else {
+      (hashTable->entries)[randomIndex] = NULL;
+   }
    free(cur);
    
    return returnAddress;
