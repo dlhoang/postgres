@@ -1,0 +1,694 @@
+rm -rf '/Users/dihoang/Documents/CSC560/postgres'/tmp_install
+/bin/sh ../../config/install-sh -c -d '/Users/dihoang/Documents/CSC560/postgres'/tmp_install/log
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C '../..' DESTDIR='/Users/dihoang/Documents/CSC560/postgres'/tmp_install install >'/Users/dihoang/Documents/CSC560/postgres'/tmp_install/log/install.log 2>&1
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C perl check
+make[1]: Nothing to be done for `check'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C regress check
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/port all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[3]: Nothing to be done for `submake-errcodes'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/common all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[3]: Nothing to be done for `submake-errcodes'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/backend generated-headers
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C catalog schemapg.h
+make[3]: `schemapg.h' is up to date.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../contrib/spi
+make[2]: Nothing to be done for `all'.
+rm -rf ./testtablespace
+mkdir ./testtablespace
+PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" ../../../src/test/regress/pg_regress --temp-instance=./tmp_check --inputdir=. --bindir=     --dlpath=. --max-concurrent-tests=20  --schedule=./parallel_schedule  
+============== creating temporary instance            ==============
+============== initializing database system           ==============
+============== starting postmaster                    ==============
+running on port 60848 with PID 28307
+============== creating database "regression"         ==============
+CREATE DATABASE
+ALTER DATABASE
+============== running regression test queries        ==============
+test tablespace               ... ok
+parallel group (20 tests):  char varchar oid name int2 pg_lsn float4 int4 text boolean txid uuid regproc float8 money bit int8 enum numeric rangetypes
+     boolean                  ... ok
+     char                     ... ok
+     name                     ... ok
+     varchar                  ... ok
+     text                     ... ok
+     int2                     ... ok
+     int4                     ... ok
+     int8                     ... ok
+     oid                      ... ok
+     float4                   ... ok
+     float8                   ... ok
+     bit                      ... ok
+     numeric                  ... ok
+     txid                     ... ok
+     uuid                     ... ok
+     enum                     ... ok
+     money                    ... ok
+     rangetypes               ... ok
+     pg_lsn                   ... ok
+     regproc                  ... ok
+test strings                  ... ok
+test numerology               ... ok
+parallel group (20 tests):  lseg path circle time reltime abstime tinterval timetz polygon line macaddr point macaddr8 interval inet tstypes date box timestamp timestamptz
+     point                    ... ok
+     lseg                     ... ok
+     line                     ... ok
+     box                      ... ok
+     path                     ... ok
+     polygon                  ... ok
+     circle                   ... ok
+     date                     ... ok
+     time                     ... ok
+     timetz                   ... ok
+     timestamp                ... ok
+     timestamptz              ... ok
+     interval                 ... ok
+     abstime                  ... ok
+     reltime                  ... ok
+     tinterval                ... ok
+     inet                     ... ok
+     macaddr                  ... ok
+     macaddr8                 ... ok
+     tstypes                  ... ok
+parallel group (9 tests):  comments expressions geometry misc_sanity horology type_sanity oidjoins regex opr_sanity
+     geometry                 ... ok
+     horology                 ... ok
+     regex                    ... ok
+     oidjoins                 ... ok
+     type_sanity              ... ok
+     opr_sanity               ... ok
+     misc_sanity              ... ok
+     comments                 ... ok
+     expressions              ... ok
+test insert                   ... ok
+test insert_conflict          ... ok
+test create_function_1        ... ok
+test create_type              ... ok
+test create_table             ... ok
+test create_function_2        ... ok
+parallel group (3 tests):  copyselect copydml copy
+     copy                     ... ok
+     copyselect               ... ok
+     copydml                  ... ok
+parallel group (2 tests):  create_operator create_misc
+     create_misc              ... ok
+     create_operator          ... ok
+parallel group (2 tests):  create_view create_index
+     create_index             ... ok
+     create_view              ... ok
+parallel group (15 tests):  create_cast create_aggregate hash_func create_function_3 create_am roleattributes typed_table drop_if_exists vacuum constraints rolenames create_table_like triggers updatable_views inherit
+     create_aggregate         ... ok
+     create_function_3        ... ok
+     create_cast              ... ok
+     constraints              ... ok
+     triggers                 ... ok
+     inherit                  ... ok
+     create_table_like        ... ok
+     typed_table              ... ok
+     vacuum                   ... ok
+     drop_if_exists           ... ok
+     updatable_views          ... ok
+     rolenames                ... ok
+     roleattributes           ... ok
+     create_am                ... ok
+     hash_func                ... ok
+test sanity_check             ... ok
+test errors                   ... ok
+test select                   ... ok
+parallel group (20 tests):  select_distinct_on select_having namespace delete random select_distinct prepared_xacts select_implicit btree_index case update portals select_into transactions union subselect hash_index arrays aggregates join
+     select_into              ... ok
+     select_distinct          ... ok
+     select_distinct_on       ... ok
+     select_implicit          ... ok
+     select_having            ... ok
+     subselect                ... ok
+     union                    ... ok
+     case                     ... ok
+     join                     ... ok
+     aggregates               ... ok
+     transactions             ... ok
+     random                   ... ok
+     portals                  ... ok
+     arrays                   ... ok
+     btree_index              ... ok
+     hash_index               ... ok
+     update                   ... ok
+     namespace                ... ok
+     prepared_xacts           ... ok
+     delete                   ... ok
+parallel group (17 tests):  init_privs drop_operator security_label lock object_address tablesample groupingsets replica_identity collate password matview gin spgist rowsecurity brin privileges gist
+     brin                     ... ok
+     gin                      ... ok
+     gist                     ... ok
+     spgist                   ... ok
+     privileges               ... ok
+     init_privs               ... ok
+     security_label           ... ok
+     collate                  ... ok
+     matview                  ... ok
+     lock                     ... ok
+     replica_identity         ... ok
+     rowsecurity              ... ok
+     object_address           ... ok
+     tablesample              ... ok
+     groupingsets             ... ok
+     drop_operator            ... ok
+     password                 ... ok
+parallel group (11 tests):  async dbsize misc_functions alter_operator tidscan tsrf psql sysviews alter_generic misc stats_ext
+     alter_generic            ... ok
+     alter_operator           ... ok
+     misc                     ... ok
+     psql                     ... ok
+     async                    ... ok
+     dbsize                   ... ok
+     misc_functions           ... ok
+     sysviews                 ... ok
+     tsrf                     ... ok
+     tidscan                  ... ok
+     stats_ext                ... ok
+parallel group (3 tests):  amutils psql_crosstab rules
+     rules                    ... ok
+     psql_crosstab            ... ok
+     amutils                  ... ok
+test select_parallel          ... ok
+test write_parallel           ... ok
+parallel group (2 tests):  subscription publication
+     publication              ... ok
+     subscription             ... ok
+parallel group (20 tests):  portals_p2 advisory_lock json_encoding combocid tsdicts xmlmap equivclass guc functional_deps select_views dependency json tsearch window jsonb cluster bitmapops foreign_key indirect_toast foreign_data
+     select_views             ... ok
+     portals_p2               ... ok
+     foreign_key              ... ok
+     cluster                  ... ok
+     dependency               ... ok
+     guc                      ... ok
+     bitmapops                ... ok
+     combocid                 ... ok
+     tsearch                  ... ok
+     tsdicts                  ... ok
+     foreign_data             ... ok
+     window                   ... ok
+     xmlmap                   ... ok
+     functional_deps          ... ok
+     advisory_lock            ... ok
+     json                     ... ok
+     jsonb                    ... ok
+     json_encoding            ... ok
+     indirect_toast           ... ok
+     equivclass               ... ok
+parallel group (19 tests):  returning conversion prepare temp limit plancache copy2 polymorphism sequence xml truncate rowtypes rangefuncs domain with largeobject without_oid alter_table plpgsql
+     plancache                ... ok
+     limit                    ... ok
+     plpgsql                  ... ok
+     copy2                    ... ok
+     temp                     ... ok
+     domain                   ... ok
+     rangefuncs               ... ok
+     prepare                  ... ok
+     without_oid              ... ok
+     conversion               ... ok
+     truncate                 ... ok
+     alter_table              ... ok
+     sequence                 ... ok
+     polymorphism             ... ok
+     rowtypes                 ... ok
+     returning                ... ok
+     largeobject              ... ok
+     with                     ... ok
+     xml                      ... ok
+parallel group (2 tests):  identity partition_join
+     identity                 ... ok
+     partition_join           ... ok
+test event_trigger            ... ok
+test stats                    ... ok
+============== shutting down postmaster               ==============
+============== removing temporary instance            ==============
+
+=======================
+ All 181 tests passed. 
+=======================
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C isolation check
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/interfaces/libpq all
+make[2]: Nothing to be done for `all'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/port all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[3]: Nothing to be done for `submake-errcodes'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/common all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[3]: Nothing to be done for `submake-errcodes'.
+PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" ../../../src/test/isolation/pg_isolation_regress --temp-instance=./tmp_check_iso --inputdir=. --outputdir=output_iso --bindir=     --schedule=./isolation_schedule
+============== creating temporary instance            ==============
+============== initializing database system           ==============
+============== starting postmaster                    ==============
+running on port 60848 with PID 29238
+============== creating database "isolation_regression" ==============
+CREATE DATABASE
+ALTER DATABASE
+============== running regression test queries        ==============
+test read-only-anomaly        ... ok
+test read-only-anomaly-2      ... ok
+test read-only-anomaly-3      ... ok
+test read-write-unique        ... ok
+test read-write-unique-2      ... ok
+test read-write-unique-3      ... ok
+test read-write-unique-4      ... ok
+test simple-write-skew        ... ok
+test receipt-report           ... ok
+test temporal-range-integrity ... ok
+test project-manager          ... ok
+test classroom-scheduling     ... ok
+test total-cash               ... ok
+test referential-integrity    ... ok
+test ri-trigger               ... ok
+test partial-index            ... ok
+test two-ids                  ... ok
+test multiple-row-versions    ... ok
+test index-only-scan          ... ok
+test deadlock-simple          ... ok
+test deadlock-hard            ... ok
+test deadlock-soft            ... ok
+test deadlock-soft-2          ... ok
+test fk-contention            ... ok
+test fk-deadlock              ... ok
+test fk-deadlock2             ... ok
+test eval-plan-qual           ... ok
+test lock-update-delete       ... ok
+test lock-update-traversal    ... ok
+test insert-conflict-do-nothing ... ok
+test insert-conflict-do-nothing-2 ... ok
+test insert-conflict-do-update ... ok
+test insert-conflict-do-update-2 ... ok
+test insert-conflict-do-update-3 ... ok
+test insert-conflict-toast    ... ok
+test delete-abort-savept      ... ok
+test delete-abort-savept-2    ... ok
+test aborted-keyrevoke        ... ok
+test multixact-no-deadlock    ... ok
+test multixact-no-forget      ... ok
+test lock-committed-update    ... ok
+test lock-committed-keyupdate ... ok
+test update-locked-tuple      ... ok
+test propagate-lock-delete    ... ok
+test tuplelock-conflict       ... ok
+test tuplelock-update         ... ok
+test freeze-the-dead          ... ok
+test nowait                   ... ok
+test nowait-2                 ... ok
+test nowait-3                 ... ok
+test nowait-4                 ... ok
+test nowait-5                 ... ok
+test skip-locked              ... ok
+test skip-locked-2            ... ok
+test skip-locked-3            ... ok
+test skip-locked-4            ... ok
+test drop-index-concurrently-1 ... ok
+test alter-table-1            ... ok
+test alter-table-2            ... ok
+test alter-table-3            ... ok
+test create-trigger           ... ok
+test sequence-ddl             ... ok
+test async-notify             ... ok
+test vacuum-reltuples         ... ok
+test timeouts                 ... ok
+============== shutting down postmaster               ==============
+============== removing temporary instance            ==============
+
+======================
+ All 65 tests passed. 
+======================
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C modules check
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C brin check
+for extra in contrib/pageinspect; do /Applications/Xcode.app/Contents/Developer/usr/bin/make -C '../../../..'/$extra DESTDIR='/Users/dihoang/Documents/CSC560/postgres'/tmp_install install >>'/Users/dihoang/Documents/CSC560/postgres'/tmp_install/log/install.log || exit; done
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../../src/test/isolation all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/interfaces/libpq all
+make[4]: Nothing to be done for `all'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/port all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/common all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+/bin/sh ../../../../config/install-sh -c -d isolation_output
+PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" ../../../../src/test/isolation/pg_isolation_regress --temp-instance=./tmp_check_iso --inputdir=. --outputdir=output_iso --bindir=     \
+	    --outputdir=./isolation_output \
+	    summarization-and-inprogress-insertion
+============== creating temporary instance            ==============
+============== initializing database system           ==============
+============== starting postmaster                    ==============
+running on port 60848 with PID 29710
+============== creating database "isolation_regression" ==============
+CREATE DATABASE
+ALTER DATABASE
+============== running regression test queries        ==============
+test summarization-and-inprogress-insertion ... ok
+============== shutting down postmaster               ==============
+============== removing temporary instance            ==============
+
+=====================
+ All 1 tests passed. 
+=====================
+
+rm -rf '/Users/dihoang/Documents/CSC560/postgres/src/test/modules/brin'/tmp_check
+/bin/sh ../../../../config/install-sh -c -d '/Users/dihoang/Documents/CSC560/postgres/src/test/modules/brin'/tmp_check
+cd . && TESTDIR='/Users/dihoang/Documents/CSC560/postgres/src/test/modules/brin' PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" PGPORT='65432' PG_REGRESS='/Users/dihoang/Documents/CSC560/postgres/src/test/modules/brin/../../../../src/test/regress/pg_regress' /usr/local/bin/prove -I ../../../../src/test/perl/ -I .  t/*.pl
+t/01_workitems.pl .. ok
+All tests successful.
+Files=1, Tests=2,  2 wallclock secs ( 0.01 usr  0.01 sys +  0.68 cusr  0.35 csys =  1.05 CPU)
+Result: PASS
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C commit_ts check
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../../src/test/regress pg_regress
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/port all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/common all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+for extra in src/test/modules/commit_ts; do /Applications/Xcode.app/Contents/Developer/usr/bin/make -C '../../../..'/$extra DESTDIR='/Users/dihoang/Documents/CSC560/postgres'/tmp_install install >>'/Users/dihoang/Documents/CSC560/postgres'/tmp_install/log/install.log || exit; done
+rm -rf '/Users/dihoang/Documents/CSC560/postgres/src/test/modules/commit_ts'/tmp_check
+/bin/sh ../../../../config/install-sh -c -d '/Users/dihoang/Documents/CSC560/postgres/src/test/modules/commit_ts'/tmp_check
+cd . && TESTDIR='/Users/dihoang/Documents/CSC560/postgres/src/test/modules/commit_ts' PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" PGPORT='65432' PG_REGRESS='/Users/dihoang/Documents/CSC560/postgres/src/test/modules/commit_ts/../../../../src/test/regress/pg_regress' /usr/local/bin/prove -I ../../../../src/test/perl/ -I .  t/*.pl
+t/001_base.pl ....... ok
+t/002_standby.pl .... ok
+t/003_standby_2.pl .. ok
+t/004_restart.pl .... ok
+All tests successful.
+Files=4, Tests=26, 12 wallclock secs ( 0.03 usr  0.01 sys +  3.04 cusr  2.37 csys =  5.45 CPU)
+Result: PASS
+PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" ../../../../src/test/regress/pg_regress --temp-instance=./tmp_check --inputdir=. --bindir=     --temp-config=../../../../src/test/modules/commit_ts/commit_ts.conf --dbname=contrib_regression commit_timestamp
+============== removing existing temp instance        ==============
+============== creating temporary instance            ==============
+============== initializing database system           ==============
+============== starting postmaster                    ==============
+running on port 60848 with PID 30188
+============== creating database "contrib_regression" ==============
+CREATE DATABASE
+ALTER DATABASE
+============== running regression test queries        ==============
+test commit_timestamp         ... ok
+============== shutting down postmaster               ==============
+============== removing temporary instance            ==============
+
+=====================
+ All 1 tests passed. 
+=====================
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C dummy_seclabel check
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../../src/test/regress pg_regress
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/port all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/common all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+for extra in src/test/modules/dummy_seclabel; do /Applications/Xcode.app/Contents/Developer/usr/bin/make -C '../../../..'/$extra DESTDIR='/Users/dihoang/Documents/CSC560/postgres'/tmp_install install >>'/Users/dihoang/Documents/CSC560/postgres'/tmp_install/log/install.log || exit; done
+PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" ../../../../src/test/regress/pg_regress --temp-instance=./tmp_check --inputdir=. --bindir=     --dbname=contrib_regression dummy_seclabel
+============== creating temporary instance            ==============
+============== initializing database system           ==============
+============== starting postmaster                    ==============
+running on port 60848 with PID 30238
+============== creating database "contrib_regression" ==============
+CREATE DATABASE
+ALTER DATABASE
+============== running regression test queries        ==============
+test dummy_seclabel           ... ok
+============== shutting down postmaster               ==============
+============== removing temporary instance            ==============
+
+=====================
+ All 1 tests passed. 
+=====================
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C snapshot_too_old check
+for extra in src/test/modules/snapshot_too_old; do /Applications/Xcode.app/Contents/Developer/usr/bin/make -C '../../../..'/$extra DESTDIR='/Users/dihoang/Documents/CSC560/postgres'/tmp_install install >>'/Users/dihoang/Documents/CSC560/postgres'/tmp_install/log/install.log || exit; done
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../../src/test/modules/snapshot_too_old
+make[3]: Nothing to be done for `all'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../../src/test/isolation all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/interfaces/libpq all
+make[4]: Nothing to be done for `all'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/port all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/common all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" ../../../../src/test/isolation/pg_isolation_regress --temp-instance=./tmp_check_iso --inputdir=. --outputdir=output_iso --bindir=     \
+	    --temp-config ../../../../src/test/modules/snapshot_too_old/sto.conf \
+	    sto_using_cursor sto_using_select sto_using_hash_index
+============== creating temporary instance            ==============
+============== initializing database system           ==============
+============== starting postmaster                    ==============
+running on port 60848 with PID 30284
+============== creating database "isolation_regression" ==============
+CREATE DATABASE
+ALTER DATABASE
+============== running regression test queries        ==============
+test sto_using_cursor         ... ok
+test sto_using_select         ... ok
+test sto_using_hash_index     ... ok
+============== shutting down postmaster               ==============
+============== removing temporary instance            ==============
+
+=====================
+ All 3 tests passed. 
+=====================
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C test_ddl_deparse check
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../../src/test/regress pg_regress
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/port all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/common all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+for extra in contrib/pg_stat_statements src/test/modules/test_ddl_deparse; do /Applications/Xcode.app/Contents/Developer/usr/bin/make -C '../../../..'/$extra DESTDIR='/Users/dihoang/Documents/CSC560/postgres'/tmp_install install >>'/Users/dihoang/Documents/CSC560/postgres'/tmp_install/log/install.log || exit; done
+PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" ../../../../src/test/regress/pg_regress --temp-instance=./tmp_check --inputdir=. --bindir=     --dbname=contrib_regression test_ddl_deparse create_extension create_schema create_type create_conversion create_domain create_sequence_1 create_table create_transform alter_table create_view create_trigger create_rule comment_on alter_function alter_sequence alter_ts_config alter_type_enum opfamily defprivs matviews
+============== creating temporary instance            ==============
+============== initializing database system           ==============
+============== starting postmaster                    ==============
+running on port 60848 with PID 30359
+============== creating database "contrib_regression" ==============
+CREATE DATABASE
+ALTER DATABASE
+============== running regression test queries        ==============
+test test_ddl_deparse         ... ok
+test create_extension         ... ok
+test create_schema            ... ok
+test create_type              ... ok
+test create_conversion        ... ok
+test create_domain            ... ok
+test create_sequence_1        ... ok
+test create_table             ... ok
+test create_transform         ... ok
+test alter_table              ... ok
+test create_view              ... ok
+test create_trigger           ... ok
+test create_rule              ... ok
+test comment_on               ... ok
+test alter_function           ... ok
+test alter_sequence           ... ok
+test alter_ts_config          ... ok
+test alter_type_enum          ... ok
+test opfamily                 ... ok
+test defprivs                 ... ok
+test matviews                 ... ok
+============== shutting down postmaster               ==============
+============== removing temporary instance            ==============
+
+======================
+ All 21 tests passed. 
+======================
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C test_extensions check
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../../src/test/regress pg_regress
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/port all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/common all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+for extra in src/test/modules/test_extensions; do /Applications/Xcode.app/Contents/Developer/usr/bin/make -C '../../../..'/$extra DESTDIR='/Users/dihoang/Documents/CSC560/postgres'/tmp_install install >>'/Users/dihoang/Documents/CSC560/postgres'/tmp_install/log/install.log || exit; done
+PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" ../../../../src/test/regress/pg_regress --temp-instance=./tmp_check --inputdir=. --bindir=     --dbname=contrib_regression test_extensions test_extdepend
+============== creating temporary instance            ==============
+============== initializing database system           ==============
+============== starting postmaster                    ==============
+running on port 60848 with PID 30488
+============== creating database "contrib_regression" ==============
+CREATE DATABASE
+ALTER DATABASE
+============== running regression test queries        ==============
+test test_extensions          ... ok
+test test_extdepend           ... ok
+============== shutting down postmaster               ==============
+============== removing temporary instance            ==============
+
+=====================
+ All 2 tests passed. 
+=====================
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C test_parser check
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../../src/test/regress pg_regress
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/port all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/common all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+for extra in src/test/modules/test_parser; do /Applications/Xcode.app/Contents/Developer/usr/bin/make -C '../../../..'/$extra DESTDIR='/Users/dihoang/Documents/CSC560/postgres'/tmp_install install >>'/Users/dihoang/Documents/CSC560/postgres'/tmp_install/log/install.log || exit; done
+PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" ../../../../src/test/regress/pg_regress --temp-instance=./tmp_check --inputdir=. --bindir=     --dbname=contrib_regression test_parser
+============== creating temporary instance            ==============
+============== initializing database system           ==============
+============== starting postmaster                    ==============
+running on port 60848 with PID 30543
+============== creating database "contrib_regression" ==============
+CREATE DATABASE
+ALTER DATABASE
+============== running regression test queries        ==============
+test test_parser              ... ok
+============== shutting down postmaster               ==============
+============== removing temporary instance            ==============
+
+=====================
+ All 1 tests passed. 
+=====================
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C test_pg_dump check
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../../src/test/regress pg_regress
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/port all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/common all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+for extra in src/test/modules/test_pg_dump; do /Applications/Xcode.app/Contents/Developer/usr/bin/make -C '../../../..'/$extra DESTDIR='/Users/dihoang/Documents/CSC560/postgres'/tmp_install install >>'/Users/dihoang/Documents/CSC560/postgres'/tmp_install/log/install.log || exit; done
+rm -rf '/Users/dihoang/Documents/CSC560/postgres/src/test/modules/test_pg_dump'/tmp_check
+/bin/sh ../../../../config/install-sh -c -d '/Users/dihoang/Documents/CSC560/postgres/src/test/modules/test_pg_dump'/tmp_check
+cd . && TESTDIR='/Users/dihoang/Documents/CSC560/postgres/src/test/modules/test_pg_dump' PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" PGPORT='65432' PG_REGRESS='/Users/dihoang/Documents/CSC560/postgres/src/test/modules/test_pg_dump/../../../../src/test/regress/pg_regress' /usr/local/bin/prove -I ../../../../src/test/perl/ -I .  t/*.pl
+t/001_base.pl .. ok
+All tests successful.
+Files=1, Tests=457,  4 wallclock secs ( 0.08 usr  0.01 sys +  1.00 cusr  0.47 csys =  1.56 CPU)
+Result: PASS
+PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" ../../../../src/test/regress/pg_regress --temp-instance=./tmp_check --inputdir=. --bindir=     --dbname=contrib_regression test_pg_dump
+============== removing existing temp instance        ==============
+============== creating temporary instance            ==============
+============== initializing database system           ==============
+============== starting postmaster                    ==============
+running on port 60848 with PID 30676
+============== creating database "contrib_regression" ==============
+CREATE DATABASE
+ALTER DATABASE
+============== running regression test queries        ==============
+test test_pg_dump             ... ok
+============== shutting down postmaster               ==============
+============== removing temporary instance            ==============
+
+=====================
+ All 1 tests passed. 
+=====================
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C test_rbtree check
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../../src/test/regress pg_regress
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/port all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/common all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+for extra in src/test/modules/test_rbtree; do /Applications/Xcode.app/Contents/Developer/usr/bin/make -C '../../../..'/$extra DESTDIR='/Users/dihoang/Documents/CSC560/postgres'/tmp_install install >>'/Users/dihoang/Documents/CSC560/postgres'/tmp_install/log/install.log || exit; done
+PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" ../../../../src/test/regress/pg_regress --temp-instance=./tmp_check --inputdir=. --bindir=     --dbname=contrib_regression test_rbtree
+============== creating temporary instance            ==============
+============== initializing database system           ==============
+============== starting postmaster                    ==============
+running on port 60848 with PID 30726
+============== creating database "contrib_regression" ==============
+CREATE DATABASE
+ALTER DATABASE
+============== running regression test queries        ==============
+test test_rbtree              ... ok
+============== shutting down postmaster               ==============
+============== removing temporary instance            ==============
+
+=====================
+ All 1 tests passed. 
+=====================
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C test_rls_hooks check
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../../src/test/regress pg_regress
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/port all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/common all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+for extra in src/test/modules/test_rls_hooks; do /Applications/Xcode.app/Contents/Developer/usr/bin/make -C '../../../..'/$extra DESTDIR='/Users/dihoang/Documents/CSC560/postgres'/tmp_install install >>'/Users/dihoang/Documents/CSC560/postgres'/tmp_install/log/install.log || exit; done
+PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" ../../../../src/test/regress/pg_regress --temp-instance=./tmp_check --inputdir=. --bindir=     --temp-config=../../../../src/test/modules/test_rls_hooks/rls_hooks.conf --dbname=contrib_regression test_rls_hooks
+============== creating temporary instance            ==============
+============== initializing database system           ==============
+============== starting postmaster                    ==============
+running on port 60848 with PID 30774
+============== creating database "contrib_regression" ==============
+CREATE DATABASE
+ALTER DATABASE
+============== running regression test queries        ==============
+test test_rls_hooks           ... ok
+============== shutting down postmaster               ==============
+============== removing temporary instance            ==============
+
+=====================
+ All 1 tests passed. 
+=====================
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C test_shm_mq check
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../../src/test/regress pg_regress
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/port all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../../src/common all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../backend submake-errcodes
+make[5]: Nothing to be done for `submake-errcodes'.
+for extra in src/test/modules/test_shm_mq; do /Applications/Xcode.app/Contents/Developer/usr/bin/make -C '../../../..'/$extra DESTDIR='/Users/dihoang/Documents/CSC560/postgres'/tmp_install install >>'/Users/dihoang/Documents/CSC560/postgres'/tmp_install/log/install.log || exit; done
+PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" ../../../../src/test/regress/pg_regress --temp-instance=./tmp_check --inputdir=. --bindir=     --dbname=contrib_regression test_shm_mq
+============== creating temporary instance            ==============
+============== initializing database system           ==============
+============== starting postmaster                    ==============
+running on port 60848 with PID 30824
+============== creating database "contrib_regression" ==============
+CREATE DATABASE
+ALTER DATABASE
+============== running regression test queries        ==============
+test test_shm_mq              ... ok
+============== shutting down postmaster               ==============
+============== removing temporary instance            ==============
+
+=====================
+ All 1 tests passed. 
+=====================
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C worker_spi check
+make[2]: Nothing to be done for `check'.
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C subscription check
+for extra in contrib/hstore; do /Applications/Xcode.app/Contents/Developer/usr/bin/make -C '../../..'/$extra DESTDIR='/Users/dihoang/Documents/CSC560/postgres'/tmp_install install >>'/Users/dihoang/Documents/CSC560/postgres'/tmp_install/log/install.log || exit; done
+rm -rf '/Users/dihoang/Documents/CSC560/postgres/src/test/subscription'/tmp_check
+/bin/sh ../../../config/install-sh -c -d '/Users/dihoang/Documents/CSC560/postgres/src/test/subscription'/tmp_check
+cd . && TESTDIR='/Users/dihoang/Documents/CSC560/postgres/src/test/subscription' PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" PGPORT='65432' PG_REGRESS='/Users/dihoang/Documents/CSC560/postgres/src/test/subscription/../../../src/test/regress/pg_regress' /usr/local/bin/prove -I ../../../src/test/perl/ -I .  t/*.pl
+t/001_rep_changes.pl .. ok
+t/002_types.pl ........ ok
+t/003_constraints.pl .. ok
+t/004_sync.pl ......... ok
+t/005_encoding.pl ..... ok
+t/006_rewrite.pl ...... ok
+t/007_ddl.pl .......... ok
+All tests successful.
+Files=7, Tests=34, 24 wallclock secs ( 0.04 usr  0.02 sys + 10.09 cusr  5.68 csys = 15.83 CPU)
+Result: PASS
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../bin/pgbench check
+rm -rf '/Users/dihoang/Documents/CSC560/postgres/src/bin/pgbench'/tmp_check
+/bin/sh ../../../config/install-sh -c -d '/Users/dihoang/Documents/CSC560/postgres/src/bin/pgbench'/tmp_check
+cd . && TESTDIR='/Users/dihoang/Documents/CSC560/postgres/src/bin/pgbench' PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/bin:$PATH" DYLD_LIBRARY_PATH="/Users/dihoang/Documents/CSC560/postgres/tmp_install/usr/local/pgsql/lib" PGPORT='65432' PG_REGRESS='/Users/dihoang/Documents/CSC560/postgres/src/bin/pgbench/../../../src/test/regress/pg_regress' /usr/local/bin/prove -I ../../../src/test/perl/ -I .  t/*.pl
+t/001_pgbench_with_server.pl .. ok
+t/002_pgbench_no_server.pl .... ok
+All tests successful.
+Files=2, Tests=328,  3 wallclock secs ( 0.05 usr  0.01 sys +  1.09 cusr  0.66 csys =  1.81 CPU)
+Result: PASS
