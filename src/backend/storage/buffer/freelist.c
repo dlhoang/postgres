@@ -144,14 +144,47 @@ void AddToLRUList(BufferDesc *buf)
 
 /*
  * RemoveFromLRUList()
+ * Remove item on list depending on where they are since nodes before them weren't removed
+ * due to being pinned
  */
-void RemoveFromLRUList()
+void RemoveFromLRUList(int trycounter)
 {
     LRUListNode *node;
+    int loop;
     Assert(LRUList != NULL);
+
     node = StrategyControl->LRUListHead;
-    StrategyControl->LRUListHead = node->next;
-    StrategyControl->LRUListHead->prev = NULL;
+    loop = NBuffers - trycounter;
+    
+    while (loop > 0) {
+        node = node->next;
+        loop--;
+    }
+    
+    // delete the only element
+    if (node->prev == NULL && node->next == NULL)
+    {
+        StrategyControl->LRUListHead = NULL;
+        StrategyControl->LRUListTail = NULL;
+    }
+    // delete head
+    else if (node->prev == NULL && node->next != NULL)
+    {
+        StrategyControl->LRUListHead = node->next;
+        StrategyControl->LRUListHead->prev = NULL;
+    }
+    // delete tail
+    else if (node->prev != NULL && node->next == NULL)
+    {
+        StrategyControl->LRUListTail = node->prev;
+        StrategyControl->LRUListTail->next = NULL;
+    }
+    // middle elements
+    else
+    {
+        node->prev->next = node->next;
+        node->next->prev = node->prev;
+    }
 }
 
 /*
@@ -198,10 +231,22 @@ Random(void)
     return GetBufferDescriptor(victim);
 }
 
+/*
+ * LRU - Helper routine for StrategyGetBuffer()
+ * Return in the order they are on the list but don't remove yet because it might be pinned
+ */
 static inline BufferDesc *
-LRU(void)
+LRU(int trycounter)
 {
+    int loop = NBuffers - trycounter;
     LRUListNode *node = StrategyControl->LRUListHead;
+    
+    while (loop > 0)
+    {
+        node = node->next;
+        loop--;
+    }
+    
     return node->nodeId;
 }
 
@@ -294,7 +339,7 @@ BufferDesc *doEviction(uint32 local_buf_state, BufferAccessStrategy strategy, ui
     
     for (;;)
     {
-        buf = LRU();
+        buf = LRU(trycounter);
         
         /*
          * If the buffer is pinned or has a nonzero usage_count, we cannot use
@@ -328,7 +373,7 @@ BufferDesc *doEviction(uint32 local_buf_state, BufferAccessStrategy strategy, ui
                     AddBufferToRing(strategy, buf);
                     if (LRU_EVICTION)
                     {
-                        RemoveFromLRUList();
+                        RemoveFromLRUList(trycounter);
                     }
                 }
                 *buf_state = local_buf_state;
