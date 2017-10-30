@@ -136,14 +136,14 @@ Random(void)
     srand(time(NULL));
     int randomIndex = rand() % NBuffers;
 
-	victim =
-		pg_atomic_fetch_add_u32(&StrategyControl->nextVictimBuffer, randomIndex);
+    victim =
+        pg_atomic_fetch_add_u32(&StrategyControl->nextVictimBuffer, randomIndex);
 
 
-	if (victim >= NBuffers)
-	{
-		/* always wrap what we look up in BufferDescriptors */
-		victim = victim % NBuffers;
+    if (victim >= NBuffers)
+    {
+	/* always wrap what we look up in BufferDescriptors */
+	victim = victim % NBuffers;
     }
 
     return victim;
