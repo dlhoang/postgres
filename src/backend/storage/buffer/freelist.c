@@ -19,6 +19,8 @@
 #include "storage/buf_internals.h"
 #include "storage/bufmgr.h"
 #include "storage/proc.h"
+#include <stdlib.h>
+#include <time.h>
 
 #define INT_ACCESS_ONCE(var)	((int)(*((volatile int *)&(var))))
 
@@ -102,6 +104,50 @@ static BufferDesc *GetBufferFromRing(BufferAccessStrategy strategy,
 				  uint32 *buf_state);
 static void AddBufferToRing(BufferAccessStrategy strategy,
 				BufferDesc *buf);
+
+/*
+ * FIFO - Helper routine for StrategyGetBuffer()
+ */
+static inline uint32
+FIFO(void)
+{
+    uint32     victim;
+
+	victim =
+		pg_atomic_fetch_add_u32(&StrategyControl->nextVictimBuffer, 1);
+
+	if (victim >= NBuffers)
+	{
+		/* always wrap what we look up in BufferDescriptors */
+		victim = victim % NBuffers;
+    }
+
+    return victim;
+}
+
+/*
+ * Random - Helper routine for StrategyGetBuffer() 
+ */
+static inline uint32
+Random(void)
+{
+    uint32     victim;
+
+    srand(time(NULL));
+    int randomIndex = rand() % NBuffers;
+
+	victim =
+		pg_atomic_fetch_add_u32(&StrategyControl->nextVictimBuffer, randomIndex);
+
+
+	if (victim >= NBuffers)
+	{
+		/* always wrap what we look up in BufferDescriptors */
+		victim = victim % NBuffers;
+    }
+
+    return victim;
+}
 
 /*
  * ClockSweepTick - Helper routine for StrategyGetBuffer()
