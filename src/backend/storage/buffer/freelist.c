@@ -24,6 +24,15 @@
 
 #define INT_ACCESS_ONCE(var)	((int)(*((volatile int *)&(var))))
 
+#define CLOCK_EVICTION 0
+#define LRU_EVICTION 1
+
+typedef struct LRUListNode
+{
+    BufferDesc *nodeId;
+    struct LRUListNode *next;
+    struct LRUListNode *prev;
+} LRUListNode;
 
 /*
  * The shared freelist control information.
@@ -42,6 +51,9 @@ typedef struct
 
 	int			firstFreeBuffer;	/* Head of list of unused buffers */
 	int			lastFreeBuffer; /* Tail of list of unused buffers */
+    
+    LRUListNode *LRUListHead;
+    LRUListNode *LRUListTail;
 
 	/*
 	 * NOTE: lastFreeBuffer is undefined when firstFreeBuffer is -1 (that is,
@@ -64,6 +76,8 @@ typedef struct
 
 /* Pointers to shared state */
 static BufferStrategyControl *StrategyControl = NULL;
+
+static LRUListNode *LRUList = NULL;
 
 /*
  * Private (non-shared) state for managing a ring of shared buffers to re-use.
@@ -106,47 +120,89 @@ static void AddBufferToRing(BufferAccessStrategy strategy,
 				BufferDesc *buf);
 
 /*
+ * AddToLRUList - add to our list for LRU
+ */
+void AddToLRUList(BufferDesc *buf)
+{
+    LRUListNode *newNode = malloc(sizeof(LRUListNode));
+    newNode->next = NULL;
+    newNode->prev = NULL;
+    newNode->nodeId = buf;
+    
+    if (LRUList == NULL)
+    {
+        StrategyControl->LRUListHead = newNode;
+        StrategyControl->LRUListTail = newNode;
+    }
+    else
+    {
+        newNode->next = StrategyControl->LRUListHead;
+        StrategyControl->LRUListHead->prev = newNode;
+        StrategyControl->LRUListHead = newNode;
+    }
+}
+
+/*
+ * RemoveFromLRUList()
+ */
+void RemoveFromLRUList()
+{
+    LRUListNode *node;
+    Assert(LRUList != NULL);
+    node = StrategyControl->LRUListHead;
+    StrategyControl->LRUListHead = node->next;
+    StrategyControl->LRUListHead->prev = NULL;
+}
+
+/*
  * FIFO - Helper routine for StrategyGetBuffer()
  */
-static inline uint32
+static inline BufferDesc *
 FIFO(void)
 {
     uint32     victim;
-
-	victim =
-		pg_atomic_fetch_add_u32(&StrategyControl->nextVictimBuffer, 1);
-
-	if (victim >= NBuffers)
-	{
-		/* always wrap what we look up in BufferDescriptors */
-		victim = victim % NBuffers;
+    
+    victim =
+    pg_atomic_fetch_add_u32(&StrategyControl->nextVictimBuffer, 1);
+    
+    if (victim >= NBuffers)
+    {
+        /* always wrap what we look up in BufferDescriptors */
+        victim = victim % NBuffers;
     }
-
-    return victim;
+    
+    return GetBufferDescriptor(victim);
 }
 
 /*
  * Random - Helper routine for StrategyGetBuffer() 
  */
-static inline uint32
+static inline BufferDesc *
 Random(void)
 {
     uint32     victim;
+    int        randomIndex;
 
     srand(time(NULL));
-    int randomIndex = rand() % NBuffers;
-
+    randomIndex = rand() % NBuffers;
+    
     victim =
-        pg_atomic_fetch_add_u32(&StrategyControl->nextVictimBuffer, randomIndex);
-
-
+    pg_atomic_fetch_add_u32(&StrategyControl->nextVictimBuffer, randomIndex);
+    
     if (victim >= NBuffers)
     {
-	/* always wrap what we look up in BufferDescriptors */
-	victim = victim % NBuffers;
+        /* always wrap what we look up in BufferDescriptors */
+        victim = victim % NBuffers;
     }
 
-    return victim;
+    return GetBufferDescriptor(victim);
+}
+
+static inline BufferDesc *
+LRU(void)
+{
+    LRUListNode *node = StrategyControl->LRUListHead;
+    return node->nodeId;
 }
 
 /*
@@ -155,7 +211,7 @@ Random(void)
  * Move the clock hand one buffer ahead of its current position and return the
  * id of the buffer now under the hand.
  */
-static inline uint32
+static inline BufferDesc *
 ClockSweepTick(void)
 {
 	uint32		victim;
@@ -211,7 +267,7 @@ ClockSweepTick(void)
 			}
 		}
 	}
-	return victim;
+	return GetBufferDescriptor(victim);
 }
 
 /*
@@ -231,6 +287,70 @@ have_free_buffer()
 		return false;
 }
 
+BufferDesc *doEviction(uint32 local_buf_state, BufferAccessStrategy strategy, uint32 *buf_state)
+{
+    int trycounter = NBuffers;
+    BufferDesc *buf;
+    
+    for (;;)
+    {
+        buf = LRU();
+        
+        /*
+         * If the buffer is pinned or has a nonzero usage_count, we cannot use
+         * it; decrement the usage_count (unless pinned) and keep scanning.
+         */
+        local_buf_state = LockBufHdr(buf);
+        
+        if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0)
+        {
+            if (CLOCK_EVICTION)
+            {
+                if (BUF_STATE_GET_USAGECOUNT(local_buf_state) != 0)
+                {
+                    local_buf_state -= BUF_USAGECOUNT_ONE;
+                    trycounter = NBuffers;
+                }
+                else
+                {
+                    /* Found a usable buffer */
+                    if (strategy != NULL)
+                        AddBufferToRing(strategy, buf);
+                    *buf_state = local_buf_state;
+                    return buf;
+                }
+            }
+            else
+            {
+                /* Found a usable buffer */
+                if (strategy != NULL)
+                {
+                    AddBufferToRing(strategy, buf);
+                    if (LRU_EVICTION)
+                    {
+                        RemoveFromLRUList();
+                    }
+                }
+                *buf_state = local_buf_state;
+                return buf;
+            }
+        }
+        else if (--trycounter == 0)
+        {
+            /*
+             * We've scanned all the buffers without making any state changes,
+             * so all the buffers are pinned (or were when we looked at them).
+             * We could hope that someone will free one eventually, but it's
+             * probably better to fail than to risk getting stuck in an
+             * infinite loop.
+             */
+            UnlockBufHdr(buf, local_buf_state);
+            elog(ERROR, "no unpinned buffers available");
+        }
+        UnlockBufHdr(buf, local_buf_state);
+    }
+}
+
 /*
  * StrategyGetBuffer
  *
@@ -248,7 +368,6 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state)
 {
 	BufferDesc *buf;
 	int			bgwprocno;
-	int			trycounter;
 	uint32		local_buf_state;	/* to avoid repeated (de-)referencing */
 
 	/*
@@ -349,58 +468,19 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state)
 				&& BUF_STATE_GET_USAGECOUNT(local_buf_state) == 0)
 			{
 				if (strategy != NULL)
+                {
 					AddBufferToRing(strategy, buf);
+                    AddToLRUList(buf);
+                }
 				*buf_state = local_buf_state;
 				return buf;
 			}
 			UnlockBufHdr(buf, local_buf_state);
-
 		}
 	}
 
-	/* Nothing on the freelist, so run the "clock sweep" algorithm */
-	trycounter = NBuffers;
-	for (;;)
-	{
-		buf = GetBufferDescriptor(ClockSweepTick());
-
-		/*
-		 * If the buffer is pinned or has a nonzero usage_count, we cannot use
-		 * it; decrement the usage_count (unless pinned) and keep scanning.
-		 */
-		local_buf_state = LockBufHdr(buf);
-
-		if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0)
-		{
-			if (BUF_STATE_GET_USAGECOUNT(local_buf_state) != 0)
-			{
-				local_buf_state -= BUF_USAGECOUNT_ONE;
-
-				trycounter = NBuffers;
-			}
-			else
-			{
-				/* Found a usable buffer */
-				if (strategy != NULL)
-					AddBufferToRing(strategy, buf);
-				*buf_state = local_buf_state;
-				return buf;
-			}
-		}
-		else if (--trycounter == 0)
-		{
-			/*
-			 * We've scanned all the buffers without making any state changes,
-			 * so all the buffers are pinned (or were when we looked at them).
-			 * We could hope that someone will free one eventually, but it's
-			 * probably better to fail than to risk getting stuck in an
-			 * infinite loop.
-			 */
-			UnlockBufHdr(buf, local_buf_state);
-			elog(ERROR, "no unpinned buffers available");
-		}
-		UnlockBufHdr(buf, local_buf_state);
-	}
+    /* Nothing on the freelist, so run the "clock sweep" algorithm */
+    return doEviction(local_buf_state, strategy, buf_state);
 }
 
 /*
@@ -557,9 +637,11 @@ StrategyInitialize(bool init)
 		 */
 		StrategyControl->firstFreeBuffer = 0;
 		StrategyControl->lastFreeBuffer = NBuffers - 1;
+        
+        StrategyControl->LRUListHead = NULL;
+        StrategyControl->LRUListTail = NULL;
 
-		/* Initialize the clock sweep pointer */
-		pg_atomic_init_u32(&StrategyControl->nextVictimBuffer, 0);
+        pg_atomic_init_u32(&StrategyControl->nextVictimBuffer, 0);
 
 		/* Clear statistics */
 		StrategyControl->completePasses = 0;
