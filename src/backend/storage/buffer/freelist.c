@@ -25,14 +25,16 @@
 #define INT_ACCESS_ONCE(var)	((int)(*((volatile int *)&(var))))
 
 #define CLOCK_EVICTION 0
-#define LRU_EVICTION 1
+#define LRU_EVICTION 0
+#define EMPTY_POINTER 0
+#define END_OF_LIST 0
 
-typedef struct LRUListNode
+typedef struct LRUNode
 {
-    BufferDesc *nodeId;
-    struct LRUListNode *next;
-    struct LRUListNode *prev;
-} LRUListNode;
+    int nodeId;
+    int next;
+    int prev;
+} LRUNode;
 
 /*
  * The shared freelist control information.
@@ -52,8 +54,10 @@ typedef struct
 	int			firstFreeBuffer;	/* Head of list of unused buffers */
 	int			lastFreeBuffer; /* Tail of list of unused buffers */
     
-    LRUListNode *LRUListHead;
-    LRUListNode *LRUListTail;
+    int head;
+    int tail;
+    
+    LRUNode LRUListNodes[1];
 
 	/*
 	 * NOTE: lastFreeBuffer is undefined when firstFreeBuffer is -1 (that is,
@@ -76,8 +80,6 @@ typedef struct
 
 /* Pointers to shared state */
 static BufferStrategyControl *StrategyControl = NULL;
-
-static LRUListNode *LRUList = NULL;
 
 /*
  * Private (non-shared) state for managing a ring of shared buffers to re-use.
@@ -120,25 +122,88 @@ static void AddBufferToRing(BufferAccessStrategy strategy,
 				BufferDesc *buf);
 
 /*
- * AddToLRUList - add to our list for LRU
+ * AddToLRUList - add to our LRU list
  */
-void AddToLRUList(BufferDesc *buf)
+void AddToLRUList(int buf_id)
 {
-    LRUListNode *newNode = malloc(sizeof(LRUListNode));
-    newNode->next = NULL;
-    newNode->prev = NULL;
-    newNode->nodeId = buf;
+    LRUNode *curr = NULL;
     
-    if (LRUList == NULL)
+    // LRU list is empty
+    if(StrategyControl->head == EMPTY_POINTER)
     {
-        StrategyControl->LRUListHead = newNode;
-        StrategyControl->LRUListTail = newNode;
+        curr = NULL;
     }
     else
     {
-        newNode->next = StrategyControl->LRUListHead;
-        StrategyControl->LRUListHead->prev = newNode;
-        StrategyControl->LRUListHead = newNode;
+        int nodeId = StrategyControl->head;
+        while(nodeId >= 0 && nodeId < NBuffers)
+        {
+            if(nodeId == buf_id)
+            {
+                curr = &StrategyControl->LRUListNodes[nodeId];
+                break;
+            }
+            nodeId = StrategyControl->LRUListNodes[nodeId].next;
+        }
+    }
+    
+    // found on LRU list
+    if(curr != NULL && curr->nodeId == buf_id)
+    {
+        // head, done
+        if (StrategyControl->head == buf_id)
+        {
+            return ;
+        }
+        // tail, move it up to head
+        else if (curr->nodeId == StrategyControl->tail)
+        {
+            LRUNode *tailNode = &StrategyControl->LRUListNodes[StrategyControl->tail];
+            LRUNode *headNode = &StrategyControl->LRUListNodes[StrategyControl->head];
+            LRUNode *newtailNode = &StrategyControl->LRUListNodes[tailNode->prev];
+
+            tailNode->next = StrategyControl->head;
+            headNode->prev = StrategyControl->tail;
+            newtailNode->next = END_OF_LIST;
+            tailNode->prev = END_OF_LIST;
+            
+            StrategyControl->head = StrategyControl->tail;
+            StrategyControl->tail = newtailNode->nodeId;
+        }
+        // middle
+        else
+        {
+            LRUNode *headNode = &StrategyControl->LRUListNodes[StrategyControl->head];
+            LRUNode *currNode = &StrategyControl->LRUListNodes[buf_id];
+            LRUNode *prevNode = &StrategyControl->LRUListNodes[currNode->prev];
+            LRUNode *nextNode = &StrategyControl->LRUListNodes[currNode->next];
+            
+            prevNode->next = nextNode->nodeId;
+            nextNode->prev = prevNode->nodeId;
+            currNode->prev = END_OF_LIST;
+            currNode->next = StrategyControl->head;
+            headNode->prev = currNode->nodeId;
+            
+            StrategyControl->head = currNode->nodeId;
+        }
+    }
+    else
+    {
+        // not found in LRU list, add to list
+        LRUNode *newNode = &StrategyControl->LRUListNodes[buf_id];
+        newNode->prev = END_OF_LIST;
+        newNode->nodeId = buf_id;
+        if (StrategyControl->head != EMPTY_POINTER)
+        {
+            StrategyControl->LRUListNodes[StrategyControl->head].prev = buf_id;
+            newNode->next = StrategyControl->head;
+        }
+        else
+        {
+            StrategyControl->tail = buf_id;
+            newNode->next = END_OF_LIST;
+        }
+        StrategyControl->head = buf_id;
     }
 }
 
@@ -147,43 +212,32 @@ void AddToLRUList(BufferDesc *buf)
  * Remove item on list depending on where they are since nodes before them weren't removed
  * due to being pinned
  */
-void RemoveFromLRUList(int trycounter)
+void RemoveFromLRUList(int buf_id)
 {
-    LRUListNode *node;
-    int loop;
-    Assert(LRUList != NULL);
-
-    node = StrategyControl->LRUListHead;
-    loop = NBuffers - trycounter;
-    
-    while (loop > 0) {
-        node = node->next;
-        loop--;
-    }
-    
-    // delete the only element
-    if (node->prev == NULL && node->next == NULL)
+    if (buf_id >= 0 && buf_id < NBuffers)
     {
-        StrategyControl->LRUListHead = NULL;
-        StrategyControl->LRUListTail = NULL;
-    }
-    // delete head
-    else if (node->prev == NULL && node->next != NULL)
-    {
-        StrategyControl->LRUListHead = node->next;
-        StrategyControl->LRUListHead->prev = NULL;
-    }
-    // delete tail
-    else if (node->prev != NULL && node->next == NULL)
-    {
-        StrategyControl->LRUListTail = node->prev;
-        StrategyControl->LRUListTail->next = NULL;
-    }
-    // middle elements
-    else
-    {
-        node->prev->next = node->next;
-        node->next->prev = node->prev;
+        LRUNode *nodeToDelete = &StrategyControl->LRUListNodes[buf_id];
+        nodeToDelete->nodeId = buf_id;
+        /* head */
+        if (buf_id == StrategyControl->head) {
+            StrategyControl->LRUListNodes[nodeToDelete->next].prev = END_OF_LIST;
+            StrategyControl->head = nodeToDelete->next;
+        }
+        /* tail */
+        else if (buf_id == StrategyControl->tail)
+        {
+            StrategyControl->LRUListNodes[nodeToDelete->prev].next = END_OF_LIST;
+            StrategyControl->tail = nodeToDelete->prev;
+        }
+        /* middle */
+        else
+        {
+            StrategyControl->LRUListNodes[nodeToDelete->prev].next = nodeToDelete->next;
+            StrategyControl->LRUListNodes[nodeToDelete->next].prev = nodeToDelete->prev;
+        }
+        
+        nodeToDelete->prev = EMPTY_POINTER;
+        nodeToDelete->next = EMPTY_POINTER;
     }
 }
 
@@ -236,18 +290,19 @@ Random(void)
  * Return in the order they are on the list but don't remove yet because it might be pinned
  */
 static inline BufferDesc *
-LRU(int trycounter)
+LRU(int index)
 {
-    int loop = NBuffers - trycounter;
-    LRUListNode *node = StrategyControl->LRUListHead;
+    int victim = StrategyControl->tail;
+    int loop = NBuffers;
+    LRUNode *node = &StrategyControl->LRUListNodes[victim];
     
-    while (loop > 0)
+    while (loop - index > 0)
     {
-        node = node->next;
-        loop--;
+        victim = node->prev;
+        node = &StrategyControl->LRUListNodes[victim];
     }
     
-    return node->nodeId;
+    return GetBufferDescriptor(victim);
 }
 
 /*
@@ -332,14 +387,15 @@ have_free_buffer()
 		return false;
 }
 
-BufferDesc *doEviction(uint32 local_buf_state, BufferAccessStrategy strategy, uint32 *buf_state)
+BufferDesc *doEviction(BufferAccessStrategy strategy, uint32 *buf_state)
 {
     int trycounter = NBuffers;
     BufferDesc *buf;
+    uint32 local_buf_state;
     
     for (;;)
     {
-        buf = LRU(trycounter);
+        buf = FIFO();
         
         /*
          * If the buffer is pinned or has a nonzero usage_count, we cannot use
@@ -371,11 +427,11 @@ BufferDesc *doEviction(uint32 local_buf_state, BufferAccessStrategy strategy, ui
                 if (strategy != NULL)
                 {
                     AddBufferToRing(strategy, buf);
-                    if (LRU_EVICTION)
-                    {
-                        RemoveFromLRUList(trycounter);
-                    }
                 }
+//                if (LRU_EVICTION)
+//                {
+//                    AddToLRUList(buf->buf_id);
+//                }
                 *buf_state = local_buf_state;
                 return buf;
             }
@@ -515,8 +571,8 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state)
 				if (strategy != NULL)
                 {
 					AddBufferToRing(strategy, buf);
-                    AddToLRUList(buf);
                 }
+                AddToLRUList(buf->buf_id);
 				*buf_state = local_buf_state;
 				return buf;
 			}
@@ -524,8 +580,8 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state)
 		}
 	}
 
-    /* Nothing on the freelist, so run the "clock sweep" algorithm */
-    return doEviction(local_buf_state, strategy, buf_state);
+    /* Nothing on the freelist, so run the page replacement algorithm */
+    return doEviction(strategy, buf_state);
 }
 
 /*
@@ -549,6 +605,7 @@ StrategyFreeBuffer(BufferDesc *buf)
 	}
 
 	SpinLockRelease(&StrategyControl->buffer_strategy_lock);
+    RemoveFromLRUList(buf->buf_id);
 }
 
 /*
@@ -631,6 +688,8 @@ StrategyShmemSize(void)
 
 	/* size of the shared replacement strategy control block */
 	size = add_size(size, MAXALIGN(sizeof(BufferStrategyControl)));
+    
+    //size = add_size(size, MAXALIGN(NBuffers*sizeof(LRUNode)));
 
 	return size;
 }
@@ -683,8 +742,8 @@ StrategyInitialize(bool init)
 		StrategyControl->firstFreeBuffer = 0;
 		StrategyControl->lastFreeBuffer = NBuffers - 1;
         
-        StrategyControl->LRUListHead = NULL;
-        StrategyControl->LRUListTail = NULL;
+        StrategyControl->head = EMPTY_POINTER;
+        StrategyControl->tail = EMPTY_POINTER;
 
         pg_atomic_init_u32(&StrategyControl->nextVictimBuffer, 0);
 
@@ -694,6 +753,15 @@ StrategyInitialize(bool init)
 
 		/* No pending notification */
 		StrategyControl->bgwprocno = -1;
+        
+        int i;
+        for (i = 0; i < NBuffers; i++)
+        {
+            LRUNode *node = &StrategyControl->LRUListNodes[i];
+            node->nodeId = i;
+            node->next = EMPTY_POINTER;
+            node->prev = EMPTY_POINTER;
+        }
 	}
 	else
 		Assert(!init);
