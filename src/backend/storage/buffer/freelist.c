@@ -629,7 +629,7 @@ StrategyFreeBuffer(BufferDesc *buf)
 	SpinLockRelease(&StrategyControl->buffer_strategy_lock);
     if (LRU_EVICTION)
     {
-        //RemoveFromLRUList(buf->buf_id);
+        RemoveFromLRUList(buf->buf_id);
     }
 }
 
