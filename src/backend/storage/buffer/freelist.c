@@ -202,17 +202,16 @@ void AddToLRUList(int buf_id)
         
         if (StrategyControl->head != EMPTY_POINTER)
         {
-            newNode->next = StrategyControl->head;  /*** This line hangs the test ***/
+            newNode->next = StrategyControl->head;
             StrategyControl->LRUListNodes[StrategyControl->head].prev = buf_id;
         }
         else
         {
+            StrategyControl->head = buf_id;
             StrategyControl->tail = buf_id;
             newNode->next = EMPTY_POINTER;
         }
-        
-        StrategyControl->head = buf_id;
-        
+
         SpinLockRelease(&StrategyControl->buffer_strategy_lock);
     }
 }
