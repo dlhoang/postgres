@@ -160,6 +160,8 @@ void AddToLRUList(int buf_id)
         // tail, move it up to head
         else if (curr->nodeId == StrategyControl->tail)
         {
+            //SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
+
             LRUNode *tailNode = &StrategyControl->LRUListNodes[StrategyControl->tail];
             LRUNode *headNode = &StrategyControl->LRUListNodes[StrategyControl->head];
             LRUNode *newtailNode = &StrategyControl->LRUListNodes[tailNode->prev];
@@ -171,10 +173,14 @@ void AddToLRUList(int buf_id)
             
             StrategyControl->head = StrategyControl->tail;
             StrategyControl->tail = newtailNode->nodeId;
+            
+            //SpinLockRelease(&StrategyControl->buffer_strategy_lock);
         }
         // middle
         else
         {
+            //SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
+
             LRUNode *headNode = &StrategyControl->LRUListNodes[StrategyControl->head];
             LRUNode *currNode = &StrategyControl->LRUListNodes[buf_id];
             LRUNode *prevNode = &StrategyControl->LRUListNodes[currNode->prev];
@@ -187,12 +193,14 @@ void AddToLRUList(int buf_id)
             headNode->prev = currNode->nodeId;
             
             StrategyControl->head = currNode->nodeId;
+            
+            //SpinLockRelease(&StrategyControl->buffer_strategy_lock);
         }
     }
     else
     {
         /* Acquire the spinlock to add element*/
-        SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
+        //SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
         
         // not found in LRU list, add to list
         LRUNode *newNode = &StrategyControl->LRUListNodes[buf_id];
@@ -212,7 +220,7 @@ void AddToLRUList(int buf_id)
             newNode->next = EMPTY_POINTER;
         }
 
-        SpinLockRelease(&StrategyControl->buffer_strategy_lock);
+        //SpinLockRelease(&StrategyControl->buffer_strategy_lock);
     }
 }
 
@@ -223,7 +231,7 @@ void AddToLRUList(int buf_id)
  */
 void RemoveFromLRUList(int buf_id)
 {
-    SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
+    //SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
 
     if (buf_id >= 0 && buf_id < NBuffers)
     {
@@ -251,7 +259,7 @@ void RemoveFromLRUList(int buf_id)
         nodeToDelete->next = EMPTY_POINTER;
     }
     
-    SpinLockRelease(&StrategyControl->buffer_strategy_lock);
+    //SpinLockRelease(&StrategyControl->buffer_strategy_lock);
 }
 
 /*
@@ -319,6 +327,7 @@ LRU(int index)
         }
         
         node = &StrategyControl->LRUListNodes[victim];
+        
     }
     
     return GetBufferDescriptor(victim);
@@ -466,6 +475,7 @@ BufferDesc *doEviction(BufferAccessStrategy strategy, uint32 *buf_state)
              */
             UnlockBufHdr(buf, local_buf_state);
             elog(ERROR, "no unpinned buffers available");
+            return NULL;
         }
         UnlockBufHdr(buf, local_buf_state);
     }
@@ -612,6 +622,8 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state)
 void
 StrategyFreeBuffer(BufferDesc *buf)
 {
+    uint32 local_buf_state;
+
 	SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
 
 	/*
@@ -624,13 +636,16 @@ StrategyFreeBuffer(BufferDesc *buf)
 		if (buf->freeNext < 0)
 			StrategyControl->lastFreeBuffer = buf->buf_id;
 		StrategyControl->firstFreeBuffer = buf->buf_id;
+        
+        if (LRU_EVICTION)
+        {
+            local_buf_state = LockBufHdr(buf);
+            RemoveFromLRUList(buf->buf_id);
+            UnlockBufHdr(buf, local_buf_state);
+        }
 	}
-
-	SpinLockRelease(&StrategyControl->buffer_strategy_lock);
-    if (LRU_EVICTION)
-    {
-        RemoveFromLRUList(buf->buf_id);
-    }
+    
+    SpinLockRelease(&StrategyControl->buffer_strategy_lock);
 }
 
 /*
