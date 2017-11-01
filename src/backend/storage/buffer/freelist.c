@@ -25,9 +25,9 @@
 #define INT_ACCESS_ONCE(var)	((int)(*((volatile int *)&(var))))
 
 #define CLOCK_EVICTION 0
-#define LRU_EVICTION 0
-#define EMPTY_POINTER 0
-#define END_OF_LIST 0
+#define LRU_EVICTION 1
+#define EMPTY_POINTER -1
+#define END_OF_LIST -2
 
 typedef struct LRUNode
 {
@@ -126,6 +126,9 @@ static void AddBufferToRing(BufferAccessStrategy strategy,
  */
 void AddToLRUList(int buf_id)
 {
+    /* Acquire the spinlock to add element*/
+    SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
+    
     LRUNode *curr = NULL;
     
     // LRU list is empty
@@ -133,22 +136,24 @@ void AddToLRUList(int buf_id)
     {
         curr = NULL;
     }
+    // LRU isn't empty
     else
     {
         int nodeId = StrategyControl->head;
         while(nodeId >= 0 && nodeId < NBuffers)
         {
-            if(nodeId == buf_id)
+            if (nodeId == buf_id)
             {
                 curr = &StrategyControl->LRUListNodes[nodeId];
                 break;
             }
+            // if we get here, can't find that buf_id on our LRU list
             nodeId = StrategyControl->LRUListNodes[nodeId].next;
         }
     }
     
     // found on LRU list
-    if(curr != NULL && curr->nodeId == buf_id)
+    if (curr != NULL && curr->nodeId == buf_id)
     {
         // head, done
         if (StrategyControl->head == buf_id)
@@ -164,8 +169,8 @@ void AddToLRUList(int buf_id)
 
             tailNode->next = StrategyControl->head;
             headNode->prev = StrategyControl->tail;
-            newtailNode->next = END_OF_LIST;
-            tailNode->prev = END_OF_LIST;
+            newtailNode->next = EMPTY_POINTER;
+            tailNode->prev = EMPTY_POINTER;
             
             StrategyControl->head = StrategyControl->tail;
             StrategyControl->tail = newtailNode->nodeId;
@@ -180,7 +185,7 @@ void AddToLRUList(int buf_id)
             
             prevNode->next = nextNode->nodeId;
             nextNode->prev = prevNode->nodeId;
-            currNode->prev = END_OF_LIST;
+            currNode->prev = EMPTY_POINTER;
             currNode->next = StrategyControl->head;
             headNode->prev = currNode->nodeId;
             
@@ -191,7 +196,7 @@ void AddToLRUList(int buf_id)
     {
         // not found in LRU list, add to list
         LRUNode *newNode = &StrategyControl->LRUListNodes[buf_id];
-        newNode->prev = END_OF_LIST;
+        newNode->prev = EMPTY_POINTER;
         newNode->nodeId = buf_id;
         if (StrategyControl->head != EMPTY_POINTER)
         {
@@ -201,10 +206,12 @@ void AddToLRUList(int buf_id)
         else
         {
             StrategyControl->tail = buf_id;
-            newNode->next = END_OF_LIST;
+            newNode->next = EMPTY_POINTER;
         }
         StrategyControl->head = buf_id;
     }
+    
+    SpinLockRelease(&StrategyControl->buffer_strategy_lock);
 }
 
 /*
@@ -214,19 +221,21 @@ void AddToLRUList(int buf_id)
  */
 void RemoveFromLRUList(int buf_id)
 {
+    SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
+
     if (buf_id >= 0 && buf_id < NBuffers)
     {
         LRUNode *nodeToDelete = &StrategyControl->LRUListNodes[buf_id];
         nodeToDelete->nodeId = buf_id;
         /* head */
         if (buf_id == StrategyControl->head) {
-            StrategyControl->LRUListNodes[nodeToDelete->next].prev = END_OF_LIST;
+            StrategyControl->LRUListNodes[nodeToDelete->next].prev = EMPTY_POINTER;
             StrategyControl->head = nodeToDelete->next;
         }
         /* tail */
         else if (buf_id == StrategyControl->tail)
         {
-            StrategyControl->LRUListNodes[nodeToDelete->prev].next = END_OF_LIST;
+            StrategyControl->LRUListNodes[nodeToDelete->prev].next = EMPTY_POINTER;
             StrategyControl->tail = nodeToDelete->prev;
         }
         /* middle */
@@ -239,6 +248,8 @@ void RemoveFromLRUList(int buf_id)
         nodeToDelete->prev = EMPTY_POINTER;
         nodeToDelete->next = EMPTY_POINTER;
     }
+    
+    SpinLockRelease(&StrategyControl->buffer_strategy_lock);
 }
 
 /*
@@ -299,6 +310,12 @@ LRU(int index)
     while (loop - index > 0)
     {
         victim = node->prev;
+        
+        if (victim < 0)
+        {
+            victim = StrategyControl->tail;
+        }
+        
         node = &StrategyControl->LRUListNodes[victim];
     }
     
@@ -395,7 +412,7 @@ BufferDesc *doEviction(BufferAccessStrategy strategy, uint32 *buf_state)
     
     for (;;)
     {
-        buf = FIFO();
+        buf = LRU(trycounter);
         
         /*
          * If the buffer is pinned or has a nonzero usage_count, we cannot use
@@ -428,10 +445,10 @@ BufferDesc *doEviction(BufferAccessStrategy strategy, uint32 *buf_state)
                 {
                     AddBufferToRing(strategy, buf);
                 }
-//                if (LRU_EVICTION)
-//                {
-//                    AddToLRUList(buf->buf_id);
-//                }
+                if (LRU_EVICTION)
+                {
+                    AddToLRUList(buf->buf_id);
+                }
                 *buf_state = local_buf_state;
                 return buf;
             }
@@ -572,7 +589,10 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state)
                 {
 					AddBufferToRing(strategy, buf);
                 }
-                AddToLRUList(buf->buf_id);
+                if (LRU_EVICTION)
+                {
+                    AddToLRUList(buf->buf_id);
+                }
 				*buf_state = local_buf_state;
 				return buf;
 			}
@@ -605,7 +625,10 @@ StrategyFreeBuffer(BufferDesc *buf)
 	}
 
 	SpinLockRelease(&StrategyControl->buffer_strategy_lock);
-    RemoveFromLRUList(buf->buf_id);
+    if (LRU_EVICTION)
+    {
+        //RemoveFromLRUList(buf->buf_id);
+    }
 }
 
 /*
@@ -689,7 +712,7 @@ StrategyShmemSize(void)
 	/* size of the shared replacement strategy control block */
 	size = add_size(size, MAXALIGN(sizeof(BufferStrategyControl)));
     
-    //size = add_size(size, MAXALIGN(NBuffers*sizeof(LRUNode)));
+    size = add_size(size, MAXALIGN(NBuffers*sizeof(LRUNode)));
 
 	return size;
 }
@@ -723,7 +746,7 @@ StrategyInitialize(bool init)
 	 */
 	StrategyControl = (BufferStrategyControl *)
 		ShmemInitStruct("Buffer Strategy Status",
-						sizeof(BufferStrategyControl),
+						offsetof(BufferStrategyControl, LRUListNodes) + NBuffers * sizeof(LRUNode),
 						&found);
 
 	if (!found)
@@ -766,7 +789,6 @@ StrategyInitialize(bool init)
 	else
 		Assert(!init);
 }
-
 
 /* ----------------------------------------------------------------
  *				Backend-private buffer ring management
