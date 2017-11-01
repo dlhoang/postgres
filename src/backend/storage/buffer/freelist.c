@@ -126,9 +126,6 @@ static void AddBufferToRing(BufferAccessStrategy strategy,
  */
 void AddToLRUList(int buf_id)
 {
-    /* Acquire the spinlock to add element*/
-    SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
-    
     LRUNode *curr = NULL;
     
     // LRU list is empty
@@ -194,24 +191,30 @@ void AddToLRUList(int buf_id)
     }
     else
     {
+        /* Acquire the spinlock to add element*/
+        SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
+        
         // not found in LRU list, add to list
         LRUNode *newNode = &StrategyControl->LRUListNodes[buf_id];
+        
         newNode->prev = EMPTY_POINTER;
         newNode->nodeId = buf_id;
+        
         if (StrategyControl->head != EMPTY_POINTER)
         {
+            newNode->next = StrategyControl->head;  /*** This line hangs the test ***/
             StrategyControl->LRUListNodes[StrategyControl->head].prev = buf_id;
-            newNode->next = StrategyControl->head;
         }
         else
         {
             StrategyControl->tail = buf_id;
             newNode->next = EMPTY_POINTER;
         }
+        
         StrategyControl->head = buf_id;
+        
+        SpinLockRelease(&StrategyControl->buffer_strategy_lock);
     }
-    
-    SpinLockRelease(&StrategyControl->buffer_strategy_lock);
 }
 
 /*
