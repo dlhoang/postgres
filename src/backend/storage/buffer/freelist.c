@@ -160,7 +160,7 @@ void AddToLRUList(int buf_id)
         // tail, move it up to head
         else if (curr->nodeId == StrategyControl->tail)
         {
-            //SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
+            SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
 
             LRUNode *tailNode = &StrategyControl->LRUListNodes[StrategyControl->tail];
             LRUNode *headNode = &StrategyControl->LRUListNodes[StrategyControl->head];
@@ -174,12 +174,12 @@ void AddToLRUList(int buf_id)
             StrategyControl->head = StrategyControl->tail;
             StrategyControl->tail = newtailNode->nodeId;
             
-            //SpinLockRelease(&StrategyControl->buffer_strategy_lock);
+            SpinLockRelease(&StrategyControl->buffer_strategy_lock);
         }
         // middle
         else
         {
-            //SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
+            SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
 
             LRUNode *headNode = &StrategyControl->LRUListNodes[StrategyControl->head];
             LRUNode *currNode = &StrategyControl->LRUListNodes[buf_id];
@@ -194,13 +194,13 @@ void AddToLRUList(int buf_id)
             
             StrategyControl->head = currNode->nodeId;
             
-            //SpinLockRelease(&StrategyControl->buffer_strategy_lock);
+            SpinLockRelease(&StrategyControl->buffer_strategy_lock);
         }
     }
     else
     {
         /* Acquire the spinlock to add element*/
-        //SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
+        SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
         
         // not found in LRU list, add to list
         LRUNode *newNode = &StrategyControl->LRUListNodes[buf_id];
@@ -220,7 +220,7 @@ void AddToLRUList(int buf_id)
             newNode->next = EMPTY_POINTER;
         }
 
-        //SpinLockRelease(&StrategyControl->buffer_strategy_lock);
+        SpinLockRelease(&StrategyControl->buffer_strategy_lock);
     }
 }
 
@@ -231,8 +231,6 @@ void AddToLRUList(int buf_id)
  */
 void RemoveFromLRUList(int buf_id)
 {
-    //SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
-
     if (buf_id >= 0 && buf_id < NBuffers)
     {
         LRUNode *nodeToDelete = &StrategyControl->LRUListNodes[buf_id];
@@ -258,8 +256,6 @@ void RemoveFromLRUList(int buf_id)
         nodeToDelete->prev = EMPTY_POINTER;
         nodeToDelete->next = EMPTY_POINTER;
     }
-    
-    //SpinLockRelease(&StrategyControl->buffer_strategy_lock);
 }
 
 /*
@@ -311,25 +307,8 @@ Random(void)
  * Return in the order they are on the list but don't remove yet because it might be pinned
  */
 static inline BufferDesc *
-LRU(int index)
-{
-    int victim = StrategyControl->tail;
-    int loop = NBuffers;
-    LRUNode *node = &StrategyControl->LRUListNodes[victim];
-    
-    while (loop - index > 0)
-    {
-        victim = node->prev;
-        
-        if (victim < 0)
-        {
-            victim = StrategyControl->tail;
-        }
-        
-        node = &StrategyControl->LRUListNodes[victim];
-        
-    }
-    
+LRU(int victim)
+{   
     return GetBufferDescriptor(victim);
 }
 
@@ -420,10 +399,11 @@ BufferDesc *doEviction(BufferAccessStrategy strategy, uint32 *buf_state)
     int trycounter = NBuffers;
     BufferDesc *buf;
     uint32 local_buf_state;
+    int victim = StrategyControl->tail;
     
     for (;;)
     {
-        buf = LRU(trycounter);
+        buf = LRU(victim);
         
         /*
          * If the buffer is pinned or has a nonzero usage_count, we cannot use
@@ -477,7 +457,22 @@ BufferDesc *doEviction(BufferAccessStrategy strategy, uint32 *buf_state)
             elog(ERROR, "no unpinned buffers available");
             return NULL;
         }
-        UnlockBufHdr(buf, local_buf_state);
+        else if (LRU_EVICTION)
+        {
+            UnlockBufHdr(buf, local_buf_state);
+            LRUNode *node = &StrategyControl->LRUListNodes[victim];
+            victim = node->prev;
+            if (victim < 0)
+            {
+                /*** This causes tests to fail, maybe we need to handle it differently ***/
+                elog(ERROR, "no unpinned buffers available");
+                return NULL;
+            }
+        }
+        else
+        {
+            UnlockBufHdr(buf, local_buf_state);
+        }
     }
 }
 
