@@ -459,20 +459,14 @@ BufferDesc *doEviction(BufferAccessStrategy strategy, uint32 *buf_state)
         }
         else if (LRU_EVICTION)
         {
-            UnlockBufHdr(buf, local_buf_state);
             LRUNode *node = &StrategyControl->LRUListNodes[victim];
             victim = node->prev;
             if (victim < 0)
             {
-                /*** This causes tests to fail, maybe we need to handle it differently ***/
-                elog(ERROR, "no unpinned buffers available");
-                return NULL;
+                victim = StrategyControl->tail;
             }
         }
-        else
-        {
-            UnlockBufHdr(buf, local_buf_state);
-        }
+        UnlockBufHdr(buf, local_buf_state);
     }
 }
 
