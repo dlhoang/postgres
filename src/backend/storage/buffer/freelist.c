@@ -199,8 +199,7 @@ void AddToLRUList(int buf_id)
     }
     else
     {
-        /* Acquire the spinlock to add element*/
-        SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
+        Assert(buf_id < NBuffers && buf_id >= 0);
         
         // not found in LRU list, add to list
         LRUNode *newNode = &StrategyControl->LRUListNodes[buf_id];
@@ -208,6 +207,8 @@ void AddToLRUList(int buf_id)
         newNode->prev = EMPTY_POINTER;
         newNode->nodeId = buf_id;
         
+        SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
+
         if (StrategyControl->head != EMPTY_POINTER)
         {
             newNode->next = StrategyControl->head;
@@ -215,11 +216,11 @@ void AddToLRUList(int buf_id)
         }
         else
         {
-            StrategyControl->head = buf_id;
             StrategyControl->tail = buf_id;
             newNode->next = EMPTY_POINTER;
         }
-
+        StrategyControl->head = buf_id;
+        
         SpinLockRelease(&StrategyControl->buffer_strategy_lock);
     }
 }
@@ -235,9 +236,13 @@ void RemoveFromLRUList(int buf_id)
     {
         LRUNode *nodeToDelete = &StrategyControl->LRUListNodes[buf_id];
         nodeToDelete->nodeId = buf_id;
+        
         /* head */
         if (buf_id == StrategyControl->head) {
-            StrategyControl->LRUListNodes[nodeToDelete->next].prev = EMPTY_POINTER;
+            if (buf_id != StrategyControl->tail)
+            {
+                StrategyControl->LRUListNodes[nodeToDelete->next].prev = EMPTY_POINTER;
+            }
             StrategyControl->head = nodeToDelete->next;
         }
         /* tail */
@@ -308,7 +313,7 @@ Random(void)
  */
 static inline BufferDesc *
 LRU(int victim)
-{   
+{
     return GetBufferDescriptor(victim);
 }
 
@@ -411,59 +416,78 @@ BufferDesc *doEviction(BufferAccessStrategy strategy, uint32 *buf_state)
          */
         local_buf_state = LockBufHdr(buf);
         
-        if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0)
+        if (LRU_EVICTION)
         {
-            if (CLOCK_EVICTION)
+            if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0)
             {
-                if (BUF_STATE_GET_USAGECOUNT(local_buf_state) != 0)
+                if (strategy != NULL)
+                    AddBufferToRing(strategy, buf);
+                AddToLRUList(buf->buf_id);
+                *buf_state = local_buf_state;
+                return buf;
+            }
+            else if (--trycounter == 0)
+            {
+                /*
+                 * We've scanned all the buffers without making any state changes,
+                 * so all the buffers are pinned (or were when we looked at them).
+                 * We could hope that someone will free one eventually, but it's
+                 * probably better to fail than to risk getting stuck in an
+                 * infinite loop.
+                 */
+                UnlockBufHdr(buf, local_buf_state);
+                elog(ERROR, "no unpinned buffers available");
+                return NULL;
+            }
+            
+            LRUNode *node = &StrategyControl->LRUListNodes[victim];
+            victim = node->prev;
+            if (victim < 0)
+            {
+                victim = StrategyControl->tail;
+            }
+        }
+        
+        else
+        {
+            if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0)
+            {
+                if (CLOCK_EVICTION)
                 {
-                    local_buf_state -= BUF_USAGECOUNT_ONE;
-                    trycounter = NBuffers;
+                    if (BUF_STATE_GET_USAGECOUNT(local_buf_state) != 0)
+                    {
+                        local_buf_state -= BUF_USAGECOUNT_ONE;
+                        trycounter = NBuffers;
+                    }
+                    else
+                    {
+                        /* Found a usable buffer */
+                        if (strategy != NULL)
+                            AddBufferToRing(strategy, buf);
+                        *buf_state = local_buf_state;
+                        return buf;
+                    }
                 }
                 else
                 {
-                    /* Found a usable buffer */
                     if (strategy != NULL)
                         AddBufferToRing(strategy, buf);
                     *buf_state = local_buf_state;
                     return buf;
                 }
             }
-            else
+            else if (--trycounter == 0)
             {
-                /* Found a usable buffer */
-                if (strategy != NULL)
-                {
-                    AddBufferToRing(strategy, buf);
-                }
-                if (LRU_EVICTION)
-                {
-                    AddToLRUList(buf->buf_id);
-                }
-                *buf_state = local_buf_state;
-                return buf;
-            }
-        }
-        else if (--trycounter == 0)
-        {
-            /*
-             * We've scanned all the buffers without making any state changes,
-             * so all the buffers are pinned (or were when we looked at them).
-             * We could hope that someone will free one eventually, but it's
-             * probably better to fail than to risk getting stuck in an
-             * infinite loop.
-             */
-            UnlockBufHdr(buf, local_buf_state);
-            elog(ERROR, "no unpinned buffers available");
-            return NULL;
-        }
-        else if (LRU_EVICTION)
-        {
-            LRUNode *node = &StrategyControl->LRUListNodes[victim];
-            victim = node->prev;
-            if (victim < 0)
-            {
-                victim = StrategyControl->tail;
+                /*
+                 * We've scanned all the buffers without making any state changes,
+                 * so all the buffers are pinned (or were when we looked at them).
+                 * We could hope that someone will free one eventually, but it's
+                 * probably better to fail than to risk getting stuck in an
+                 * infinite loop.
+                 */
+                UnlockBufHdr(buf, local_buf_state);
+                elog(ERROR, "no unpinned buffers available");
+                return NULL;
             }
         }
         UnlockBufHdr(buf, local_buf_state);
@@ -583,20 +607,32 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state)
 			 * of 8.3, but we'd better check anyway.)
 			 */
 			local_buf_state = LockBufHdr(buf);
-			if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0
-				&& BUF_STATE_GET_USAGECOUNT(local_buf_state) == 0)
-			{
-				if (strategy != NULL)
+            if (CLOCK_EVICTION)
+            {
+                if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0
+                    && BUF_STATE_GET_USAGECOUNT(local_buf_state) == 0)
                 {
-					AddBufferToRing(strategy, buf);
+                    if (strategy != NULL)
+                        AddBufferToRing(strategy, buf);
+                    *buf_state = local_buf_state;
+                    UnlockBufHdr(buf, local_buf_state);
+                    return buf;
                 }
-                if (LRU_EVICTION)
+            }
+            else
+            {
+                if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0)
                 {
-                    AddToLRUList(buf->buf_id);
+                    if (strategy != NULL)
+                        AddBufferToRing(strategy, buf);
+                    if (LRU_EVICTION)
+                        AddToLRUList(buf->buf_id);
+                    *buf_state = local_buf_state;
+                    UnlockBufHdr(buf, local_buf_state);
+                    return buf;
                 }
-				*buf_state = local_buf_state;
-				return buf;
-			}
+            }
+            
 			UnlockBufHdr(buf, local_buf_state);
 		}
 	}
@@ -628,9 +664,7 @@ StrategyFreeBuffer(BufferDesc *buf)
         
         if (LRU_EVICTION)
         {
-            local_buf_state = LockBufHdr(buf);
             RemoveFromLRUList(buf->buf_id);
-            UnlockBufHdr(buf, local_buf_state);
         }
 	}
     
