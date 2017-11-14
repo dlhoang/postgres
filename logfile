@@ -1,0 +1,16 @@
+LOG:  database system was shut down at 2017-11-13 14:07:09 PST
+LOG:  MultiXact member wraparound protections are now enabled
+LOG:  database system is ready to accept connections
+LOG:  autovacuum launcher started
+ERROR:  role "dihoang" already exists
+STATEMENT:  CREATE ROLE dihoang PASSWORD 'md54d917fbe537d1cf32b78cb9789fe77af' NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT LOGIN;
+FATAL:  database "dihoang" does not exist
+FATAL:  database "dt" does not exist
+FATAL:  database "dihoang" does not exist
+FATAL:  database "dihoang" does not exist
+FATAL:  database "dihoang" does not exist
+LOG:  received fast shutdown request
+LOG:  aborting any active transactions
+LOG:  autovacuum launcher shutting down
+LOG:  shutting down
+LOG:  database system is shut down

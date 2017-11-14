@@ -1,0 +1,9 @@
+-- Name: Di Hoang
+-- Username: dlhoang
+
+DROP TABLE IF EXISTS CarData;
+DROP TABLE IF EXISTS Makes;
+DROP TABLE IF EXISTS Models;
+DROP TABLE IF EXISTS CarMakers;
+DROP TABLE IF EXISTS Countries;
+DROP TABLE IF EXISTS Continents;
